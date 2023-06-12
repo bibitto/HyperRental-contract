@@ -7,3 +7,6 @@
 [submodule "lib/sstore2"]
 	path = lib/sstore2
 	url = https://github.com/0xsequence/sstore2
+[submodule "lib/chainlink"]
+	path = lib/chainlink
+	url = https://github.com/smartcontractkit/chainlink
