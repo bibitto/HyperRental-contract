@@ -70,13 +70,13 @@ contract HyperRentalTest is Test {
         // assetDatas.push(abi.encode(address(demoERC20), 0, 100, keccak256("ERC20")));
         // assetDatas.push(abi.encode(address(demoERC1155), 0, 3, keccak256("ERC1155")));
         vm.prank(lender);
-        hyperRental.lend(mintedRentalNFTId, condition);
+        hyperRental.lend(1, condition);
     }
 
     function testCancelLending() public {
         testLend();
         vm.prank(lender);
-        hyperRental.cancelLending(0);
+        hyperRental.cancelLending(1);
         assertEq(demoNFT.ownerOf(0), lender);
     }
 
@@ -84,8 +84,8 @@ contract HyperRentalTest is Test {
         testLend();
         vm.prank(renter);
         vm.deal(renter, 10 ether);
-        hyperRental.rent{value: 5 ether}(0, 5, renter);
-        assertEq(rentalPackNFT.ownerOf(0), renter);
-        assertEq(rentalPackNFT.checkTokenBoundAccount(0).balance, 5 ether);
+        hyperRental.rent{value: 5 ether}(1, 5, renter);
+        assertEq(rentalPackNFT.ownerOf(1), renter);
+        assertEq(rentalPackNFT.checkTokenBoundAccount(1).balance, 5 ether);
     }
 }

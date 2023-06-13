@@ -111,38 +111,33 @@ contract RentalPackNFT is ERC721, AccessControl {
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "Token ID does not exist.");
-        string memory json = Base64.encode(
-            bytes(
-                string(
-                    abi.encodePacked(
-                        '{"name": "Rental Pack #',
-                        Strings.toString(tokenId),
-                        '", ',
-                        '"description": "this is a rental pack NFT powered by HyperRental protocol", ',
-                        '"image": "https://bafkreifrphrgwh6tgdjjii2sjtairtbuxbiwuy544kbvyxq5yxi5cf5vuu.ipfs.nftstorage.link/", ',
-                        '"token_bound_account": "',
-                        Strings.toHexString(uint160(_idToTokenBoundAccount[tokenId]), 20),
-                        '", ',
-                        '"rental_pack_owner": "',
-                        Strings.toHexString(uint160(_idToRentalPackOwner[tokenId]), 20),
-                        '", ',
-                        '"rental_info": {',
-                        '"fee_per_hour": ',
-                        Strings.toString(_idToRentalCondition[tokenId].feePerHour),
-                        ', ',
-                        '"min_hour": ',
-                        Strings.toString(_idToRentalCondition[tokenId].minHour),
-                        ', ',
-                        '"max_hour": ',
-                        Strings.toString(_idToRentalCondition[tokenId].maxHour),
-                        ', ',
-                        '"isListed": ',
-                        _isListed[tokenId] ? "true" : "false",
-                        '}}'
-                    )
-                )
+        string memory rentalPackName = string(abi.encodePacked("Rental Pack #", Strings.toString(tokenId)));
+        string memory tokenBoundAccount = Strings.toHexString(uint160(_idToTokenBoundAccount[tokenId]), 20);
+        string memory rentalPackOwner = Strings.toHexString(uint160(_idToRentalPackOwner[tokenId]), 20);
+        string memory rentalInfo = string(
+            abi.encodePacked(
+                '{"fee_per_hour": ',
+                Strings.toString(_idToRentalCondition[tokenId].feePerHour),
+                ', "min_hour": ',
+                Strings.toString(_idToRentalCondition[tokenId].minHour),
+                ', "max_hour": ',
+                Strings.toString(_idToRentalCondition[tokenId].maxHour),
+                ', "isListed": ',
+                _isListed[tokenId] ? "true" : "false",
+                '}'
             )
         );
+        string memory encodedData = string(
+            abi.encodePacked(
+                '{"name": "', rentalPackName, '", ',
+                '"description": "this is a rental pack NFT powered by HyperRental protocol", ',
+                '"image": "https://bafkreifrphrgwh6tgdjjii2sjtairtbuxbiwuy544kbvyxq5yxi5cf5vuu.ipfs.nftstorage.link/", ',
+                '"token_bound_account": "', tokenBoundAccount, '", ',
+                '"rental_pack_owner": "', rentalPackOwner, '", ',
+                '"rental_info": ', rentalInfo, '}'
+            )
+        );
+        string memory json = Base64.encode(bytes(encodedData));
         return string(abi.encodePacked("data:application/json;base64,", json));
     }
 }

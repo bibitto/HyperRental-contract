@@ -17,6 +17,6 @@ contract RentalPackNFTTest is Test {
 
     function testTokenUri() public {
         testMint();
-        rentalPack.tokenURI(0);
+        rentalPack.tokenURI(1);
     }
 }
