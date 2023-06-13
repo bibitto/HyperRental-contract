@@ -11,6 +11,4 @@ interface IAccount {
     function lock() external;
 
     function unlock() external;
-
-    function setHyperRental(address) external;
 }

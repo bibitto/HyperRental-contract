@@ -33,7 +33,7 @@ contract HyperRentalTest is Test {
         demoNFT = new DemoNFT();
         demoERC20 = new DemoERC20();
         demoERC1155 = new DemoERC1155();
-        rentalPackNFT.grantMinterRole(address(hyperRental));
+        rentalPackNFT.grantOperatorRole(address(hyperRental));
         // accountImpl.setHyperRental(address(hyperRental));
     }
 
@@ -59,18 +59,18 @@ contract HyperRentalTest is Test {
     function testLend() public {
         testCreateRentalPack();
         testMintDemoTokens();
-        HyperRental.RentalCondition memory condition = HyperRental.RentalCondition(1, 1, 50);
+        RentalPackNFT.RentalCondition memory condition = RentalPackNFT.RentalCondition(1, 1, 50);
         vm.prank(lender);
         demoNFT.approve(address(hyperRental), 0);
         // vm.prank(lender);
         // demoERC20.approve(address(hyperRental), 100000 * 10 ** demoERC20.decimals());
-        vm.prank(lender);
-        demoERC1155.setApprovalForAll(address(hyperRental), true);
-        assetDatas.push(abi.encode(address(demoNFT), 0, 0, keccak256("ERC721") ));
+        // vm.prank(lender);
+        // demoERC1155.setApprovalForAll(address(hyperRental), true);
+        // assetDatas.push(abi.encode(address(demoNFT), 0, 0, keccak256("ERC721")));
         // assetDatas.push(abi.encode(address(demoERC20), 0, 100, keccak256("ERC20")));
-        assetDatas.push(abi.encode(address(demoERC1155), 0, 3, keccak256("ERC1155")));
+        // assetDatas.push(abi.encode(address(demoERC1155), 0, 3, keccak256("ERC1155")));
         vm.prank(lender);
-        hyperRental.lend(mintedRentalNFTId, condition, assetDatas);
+        hyperRental.lend(mintedRentalNFTId, condition);
     }
 
     function testCancelLending() public {
@@ -86,6 +86,6 @@ contract HyperRentalTest is Test {
         vm.deal(renter, 10 ether);
         hyperRental.rent{value: 5 ether}(0, 5, renter);
         assertEq(rentalPackNFT.ownerOf(0), renter);
-        assertEq(lender.balance, 5 ether);
+        assertEq(rentalPackNFT.checkTokenBoundAccount(0).balance, 5 ether);
     }
 }
