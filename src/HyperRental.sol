@@ -36,6 +36,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         uint256 tokenId = RentalPackNFT(rentalPackAddress).safeMint(address(this));
         address tokenBoundAddress = IRegistry(tokenBoundAccountRegistry).createAccount(rentalPackAddress, tokenId);
         RentalPackNFT(rentalPackAddress).recordRentalPackOwner(tokenId, msg.sender);
+        RentalPackNFT(rentalPackAddress).recordTokenBoundAccount(tokenId, tokenBoundAddress);
         return (tokenId, tokenBoundAddress);
     }
 

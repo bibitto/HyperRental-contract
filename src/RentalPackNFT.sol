@@ -46,6 +46,8 @@ contract RentalPackNFT is ERC721, AccessControl {
 
     mapping(uint256 => bool) private _isListed;
 
+    mapping(address => uint256[]) private _ownedIds;
+
     /* ========== CONSTRUCTOR ========== */
     constructor() ERC721("RentalPack", "RENTAL") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -76,6 +78,10 @@ contract RentalPackNFT is ERC721, AccessControl {
         _isListed[tokenId] = isListed;
     }
 
+    function updateOwnedIds(address owner, uint256 tokenId) public onlyRole(OPERATOR_ROLE) {
+        _ownedIds[owner].push(tokenId);
+    }
+
     function recordTokenBoundAccount(uint256 tokenId, address tba) public onlyRole(OPERATOR_ROLE) {
         _idToTokenBoundAccount[tokenId] = tba;
     }
@@ -95,6 +101,10 @@ contract RentalPackNFT is ERC721, AccessControl {
 
     function checkListingStatus(uint256 tokenId) public view returns(bool) {
         return _isListed[tokenId];
+    }
+
+    function checkOwnedIds(address owner) public view returns (uint256[] memory) {
+        return _ownedIds[owner];
     }
 
     function checkTokenBoundAccount(uint256 tokenId) public view returns(address) {
@@ -139,5 +149,14 @@ contract RentalPackNFT is ERC721, AccessControl {
         );
         string memory json = Base64.encode(bytes(encodedData));
         return string(abi.encodePacked("data:application/json;base64,", json));
+    }
+
+    function getAllTokenUris() public view returns (string[] memory) {
+        uint256 tokenId = _tokenIdCounter.current();
+        string[] memory uris = new string[](tokenId);
+        for (uint256 i; i < tokenId; i++) {
+            uris[i] = tokenURI(i + 1);
+        }
+        return uris;
     }
 }
