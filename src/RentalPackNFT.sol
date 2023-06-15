@@ -139,7 +139,8 @@ contract RentalPackNFT is ERC721, AccessControl {
         );
         string memory encodedData = string(
             abi.encodePacked(
-                '{"name": "', rentalPackName, '", ',
+                '{"id": ', Strings.toString((tokenId)), ', ',
+                '"name": "', rentalPackName, '", ',
                 '"description": "this is a rental pack NFT powered by HyperRental protocol", ',
                 '"image": "https://bafkreifrphrgwh6tgdjjii2sjtairtbuxbiwuy544kbvyxq5yxi5cf5vuu.ipfs.nftstorage.link/", ',
                 '"token_bound_account": "', tokenBoundAccount, '", ',
