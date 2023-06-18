@@ -59,7 +59,7 @@ contract HyperRentalTest is Test {
     function testLend() public {
         testCreateRentalPack();
         testMintDemoTokens();
-        RentalPackNFT.RentalCondition memory condition = RentalPackNFT.RentalCondition(1, 1, 50);
+        RentalPackNFT.RentalCondition memory condition = RentalPackNFT.RentalCondition(1 ether, 1, 50);
         vm.prank(lender);
         demoNFT.approve(address(hyperRental), 0);
         // vm.prank(lender);
@@ -87,5 +87,15 @@ contract HyperRentalTest is Test {
         hyperRental.rent{value: 5 ether}(1, 5, renter);
         assertEq(rentalPackNFT.ownerOf(1), renter);
         assertEq(rentalPackNFT.checkTokenBoundAccount(1).balance, 5 ether);
+    }
+
+    function testWithdrawAssets() public {
+        vm.prank(lender);
+        (uint256 tokenId, address account) = hyperRental.createRentalPack();
+        demoNFT.safeMint(account, "");
+        vm.prank(lender);
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encode(address(demoNFT), 0, 1, keccak256("ERC721"));
+        hyperRental.withdrawAssets(tokenId, datas);
     }
 }

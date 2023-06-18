@@ -58,7 +58,6 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
         onlyAdmin
         returns (bytes memory result)
     {
-
         return _call(to, value, data);
     }
 

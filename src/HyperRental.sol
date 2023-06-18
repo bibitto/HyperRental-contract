@@ -37,6 +37,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         address tokenBoundAddress = IRegistry(tokenBoundAccountRegistry).createAccount(rentalPackAddress, tokenId);
         RentalPackNFT(rentalPackAddress).recordRentalPackOwner(tokenId, msg.sender);
         RentalPackNFT(rentalPackAddress).recordTokenBoundAccount(tokenId, tokenBoundAddress);
+        RentalPackNFT(rentalPackAddress).updateOwnedIds(msg.sender, tokenId);
         return (tokenId, tokenBoundAddress);
     }
 
@@ -81,14 +82,14 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         IAccount(tokenBoundAccount).lock();
     }
 
-    function lend(
-        uint256 rentalPackTokenId,
-        RentalPackNFT.RentalCondition memory rentalCondition
-    ) public {
-        require(RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender, "msg.sender is not rentalPack owner");
+    function lend(uint256 rentalPackTokenId, RentalPackNFT.RentalCondition memory rentalCondition) public {
+        require(
+            RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender,
+            "msg.sender is not rentalPack owner"
+        );
         _lockTokenBoundAccount(rentalPackTokenId);
         RentalPackNFT(rentalPackAddress).updataRentalCondition(rentalPackTokenId, rentalCondition);
-        RentalPackNFT(rentalPackAddress).updataListingStatus(rentalPackTokenId, true);
+        RentalPackNFT(rentalPackAddress).updataStatus(rentalPackTokenId, RentalPackNFT.Status.Listed);
         emit Lend(rentalPackAddress, rentalPackTokenId, rentalCondition);
     }
 
@@ -97,69 +98,28 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         IAccount(tokenBoundAccount).unlock();
     }
 
-    // function _withdrawAllAssets(uint256 rentalPackTokenId) private {
-    //     bytes32 rentalId = keccak256(abi.encodePacked(rentalPackAddress, rentalPackTokenId));
-    //     bytes[] memory assetDatas = RentalPackNFT(rentalPackAddress)._idToRentalAssets[rentalId];
-    //     address tokenBoundAddress = IRegistry(tokenBoundAccountRegistry).account(rentalPackAddress, rentalPackTokenId);
-    //     for (uint256 i; i < assetDatas.length; i++) {
-    //         (address contractAddress, uint256 tokenId, uint256 amount, bytes32 dataType) =
-    //             abi.decode(assetDatas[i], (address, uint256, uint256, bytes32));
-    //         if (dataType == keccak256("ERC20")) {
-    //             IAccount(tokenBoundAddress).executeCall(
-    //                 contractAddress,
-    //                 0,
-    //                 abi.encodeWithSignature(
-    //                     "transferFrom(address,address,uint256)", tokenBoundAddress, msg.sender, amount
-    //                 )
-    //             );
-    //         }
-    //         if (dataType == keccak256("ERC721")) {
-    //             IAccount(tokenBoundAddress).executeCall(
-    //                 contractAddress,
-    //                 0,
-    //                 abi.encodeWithSignature(
-    //                     "transferFrom(address,address,uint256)", tokenBoundAddress, msg.sender, tokenId
-    //                 )
-    //             );
-    //         }
-    //         if (dataType == keccak256("ERC1155")) {
-    //             IAccount(tokenBoundAddress).executeCall(
-    //                 contractAddress,
-    //                 0,
-    //                 abi.encodeWithSignature(
-    //                     "safeTransferFrom(address,address,uint256,uint256,bytes)",
-    //                     tokenBoundAddress,
-    //                     msg.sender,
-    //                     tokenId,
-    //                     amount,
-    //                     "0x"
-    //                 )
-    //             );
-    //         }
-    //         if (dataType == keccak256("ERC3525")) {
-    //             IAccount(tokenBoundAddress).executeCall(
-    //                 contractAddress,
-    //                 0,
-    //                 abi.encodeWithSignature("transferFrom(uint256,address,uint256)", tokenId, msg.sender, amount)
-    //             );
-    //         }
-    //     }
-    // }
-
     function _delistRentalPack(uint256 rentalPackTokenId) private {
-        RentalPackNFT(rentalPackAddress).updataListingStatus(rentalPackTokenId, false);
+        RentalPackNFT(rentalPackAddress).updataStatus(rentalPackTokenId, RentalPackNFT.Status.NotListed);
     }
 
     function _refreshRentalRecord(uint256 rentalPackTokenId) private {
-        RentalPackNFT(rentalPackAddress).updataRentalCondition(rentalPackTokenId, RentalPackNFT.RentalCondition(0, 0, 0));
+        RentalPackNFT(rentalPackAddress).updataRentalCondition(
+            rentalPackTokenId, RentalPackNFT.RentalCondition(0, 0, 0)
+        );
         if (RentalPackNFT(rentalPackAddress).checkRentalExpireTimestamp(rentalPackTokenId) != 0) {
             RentalPackNFT(rentalPackAddress).updataRentalExpireTimestamp(rentalPackTokenId, 0);
         }
     }
 
     function cancelLending(uint256 rentalPackTokenId) external {
-        require(RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender, "msg.sender is not a lender");
-        require(RentalPackNFT(rentalPackAddress).checkListingStatus(rentalPackTokenId) == true, "the rental pack is not listed");
+        require(
+            RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender,
+            "msg.sender is not a lender"
+        );
+        require(
+            RentalPackNFT(rentalPackAddress).checkStatus(rentalPackTokenId) == uint256(RentalPackNFT.Status.Listed),
+            "the rental pack is not listed"
+        );
         require(
             RentalPackNFT(rentalPackAddress).checkRentalExpireTimestamp(rentalPackTokenId) == 0,
             "cannot cancel lending when the rental pack is rented "
@@ -171,23 +131,85 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
     }
 
     function rent(uint256 rentalPackTokenId, uint256 rentalHour, address receiver) public payable {
-        require(RentalPackNFT(rentalPackAddress).checkListingStatus(rentalPackTokenId) == true, "the rental pack is not listed");
+        require(
+            RentalPackNFT(rentalPackAddress).checkStatus(rentalPackTokenId) == uint256(RentalPackNFT.Status.Listed),
+            "the rental pack is not listed"
+        );
         require(
             RentalPackNFT(rentalPackAddress).checkRentalExpireTimestamp(rentalPackTokenId) == 0,
             "anyone has already rented"
         );
         RentalPackNFT.RentalCondition memory condition =
             RentalPackNFT(rentalPackAddress).checkRentalCondition(rentalPackTokenId);
-        require(condition.feePerHour * rentalHour * 1 ether == msg.value, "msg.value is invalid");
+        if (condition.feePerHour * rentalHour != msg.value) {
+            revert InvalidRentalFee(condition.feePerHour * rentalHour, msg.value);
+        }
         require(condition.minHour <= rentalHour, "the given rental hour is too shoot");
         require(condition.maxHour >= rentalHour, "the given rental hour is too long");
-
-        uint256 rentalExpireTimestamp = block.timestamp + rentalHour * 1 hours;
+        // update listing status
+        RentalPackNFT(rentalPackAddress).updataStatus(rentalPackTokenId, RentalPackNFT.Status.Rented);
+        // update expire timestamp info
+        uint256 rentalExpireTimestamp = block.timestamp + (rentalHour * 1 hours);
         RentalPackNFT(rentalPackAddress).updataRentalExpireTimestamp(rentalPackTokenId, rentalExpireTimestamp);
         _timestampToRentalPackTokenIds[rentalExpireTimestamp].push(rentalPackTokenId);
-        payable(RentalPackNFT(rentalPackAddress).checkTokenBoundAccount(rentalPackTokenId)).transfer(msg.value);
-        IERC721(rentalPackAddress).safeTransferFrom(address(this), receiver, rentalPackTokenId);
+        // transfer fee to TBA
+        address tokenBoundAddress = RentalPackNFT(rentalPackAddress).checkTokenBoundAccount(rentalPackTokenId);
+        (bool success, bytes memory data) = tokenBoundAddress.call{value: msg.value}("");
+        require(success, "Failed to send Ether to NFT owner");
+        // tranffer rentalPack NFT to receiver address
+        IERC721(rentalPackAddress).safeTransferFrom(address(this), receiver, rentalPackTokenId, "0x");
         emit Rent(rentalPackAddress, rentalPackTokenId, rentalHour);
+    }
+
+        function withdrawAssets(uint256 rentalPackTokenId, bytes[] calldata assetDatas) public {
+        require(
+            RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender, "invalid msg.sender"
+        );
+        require(
+            RentalPackNFT(rentalPackAddress).checkStatus(rentalPackTokenId) == uint256(RentalPackNFT.Status.NotListed),
+            'the status should be "NotListed"'
+        );
+        address tokenBoundAddress = IRegistry(tokenBoundAccountRegistry).account(rentalPackAddress, rentalPackTokenId);
+        for (uint256 i; i < assetDatas.length; i++) {
+            (address contractAddress, uint256 tokenId, uint256 amount, bytes32 dataType) =
+                abi.decode(assetDatas[i], (address, uint256, uint256, bytes32));
+            if (dataType == keccak256("ERC20")) {
+                IAccount(tokenBoundAddress).executeCall(
+                    contractAddress,
+                    0,
+                    abi.encodeWithSignature(
+                        "transferFrom(address,address,uint256)", tokenBoundAddress, msg.sender, amount
+                    )
+                );
+            } else if (dataType == keccak256("ERC721")) {
+                IAccount(tokenBoundAddress).executeCall(
+                    contractAddress,
+                    0,
+                    abi.encodeWithSignature(
+                        "transferFrom(address,address,uint256)", tokenBoundAddress, msg.sender, tokenId
+                    )
+                );
+            } else if (dataType == keccak256("ERC1155")) {
+                IAccount(tokenBoundAddress).executeCall(
+                    contractAddress,
+                    0,
+                    abi.encodeWithSignature(
+                        "safeTransferFrom(address,address,uint256,uint256,bytes)",
+                        tokenBoundAddress,
+                        msg.sender,
+                        tokenId,
+                        amount,
+                        "0x"
+                    )
+                );
+            } else if (dataType == keccak256("ERC3525")) {
+                IAccount(tokenBoundAddress).executeCall(
+                    contractAddress,
+                    0,
+                    abi.encodeWithSignature("transferFrom(uint256,address,uint256)", tokenId, msg.sender, amount)
+                );
+            }
+        }
     }
 
     /* ========== CHAINLINK AUTOMATION FUNCTIONS ========== */
@@ -203,7 +225,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
     function performUpkeep(bytes calldata performData) external override {
         uint256 timestamp = abi.decode(performData, (uint256));
         uint256[] memory rentalPackIds = _timestampToRentalPackTokenIds[timestamp];
-        require(block.timestamp >= timestamp, "invalid timestamp");
+        require(block.timestamp >= timestamp && timestamp != 0, "invalid timestamp");
         require(rentalPackIds.length > 0, "no rental packs");
 
         for (uint256 i; i < rentalPackIds.length; i++) {
@@ -220,11 +242,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
     }
 
     /* ========== EVENTS ========== */
-    event Lend(
-        address rentalPackAddress,
-        uint256 rentalPackTokenId,
-        RentalPackNFT.RentalCondition rentalCondition
-    );
+    event Lend(address rentalPackAddress, uint256 rentalPackTokenId, RentalPackNFT.RentalCondition rentalCondition);
 
     event LendingCanceled(address rentalPackAddress, uint256 rentalPackTokenId);
 
@@ -234,4 +252,6 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
 
     /* ========== ERRORS ========== */
     error NotSupportedToken(address contractAddress);
+
+    error InvalidRentalFee(uint256 fee, uint256 givenValue);
 }

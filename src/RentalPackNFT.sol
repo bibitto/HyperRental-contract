@@ -20,11 +20,10 @@ contract RentalPackNFT is ERC721, AccessControl {
     }
 
     /* ========== ENUMS ========== */
-    enum TokenType {
-        ERC20,
-        ERC721,
-        ERC1155,
-        ERC3525
+    enum Status {
+        NotListed,
+        Listed,
+        Rented
     }
 
     /* ========== CONSTANT VARIABLES ========== */
@@ -44,7 +43,7 @@ contract RentalPackNFT is ERC721, AccessControl {
 
     mapping(uint256 => address) private _idToRentalPackOwner;
 
-    mapping(uint256 => bool) private _isListed;
+    mapping(uint256 => Status) private _idToStatus;
 
     mapping(address => uint256[]) private _ownedIds;
 
@@ -57,6 +56,26 @@ contract RentalPackNFT is ERC721, AccessControl {
     /* ========== MUTATIVE FUNCTIONS ========== */
     function grantOperatorRole(address to) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(OPERATOR_ROLE, to);
+    }
+
+    function transferFrom(address from, address to, uint256 tokenId) public override onlyRole(OPERATOR_ROLE) {
+        //solhint-disable-next-line max-line-length
+        require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner or approved");
+
+        _transfer(from, to, tokenId);
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override onlyRole(OPERATOR_ROLE) {
+        safeTransferFrom(from, to, tokenId, "");
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
+        public
+        override
+        onlyRole(OPERATOR_ROLE)
+    {
+        require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner or approved");
+        _safeTransfer(from, to, tokenId, data);
     }
 
     function safeMint(address to) public onlyRole(OPERATOR_ROLE) returns (uint256) {
@@ -74,8 +93,8 @@ contract RentalPackNFT is ERC721, AccessControl {
         _idToRentalExpireTimestamp[tokenId] = timestamp;
     }
 
-    function updataListingStatus(uint256 tokenId, bool isListed) public onlyRole(OPERATOR_ROLE) {
-        _isListed[tokenId] = isListed;
+    function updataStatus(uint256 tokenId, Status status) public onlyRole(OPERATOR_ROLE) {
+        _idToStatus[tokenId] = status;
     }
 
     function updateOwnedIds(address owner, uint256 tokenId) public onlyRole(OPERATOR_ROLE) {
@@ -91,27 +110,27 @@ contract RentalPackNFT is ERC721, AccessControl {
     }
 
     /* ========== VIEW FUNCTIONS ========== */
-    function checkRentalCondition(uint256 tokenId) public view returns(RentalCondition memory) {
+    function checkRentalCondition(uint256 tokenId) public view returns (RentalCondition memory) {
         return _idToRentalCondition[tokenId];
     }
 
-    function checkRentalExpireTimestamp(uint256 tokenId) public view returns(uint256) {
+    function checkRentalExpireTimestamp(uint256 tokenId) public view returns (uint256) {
         return _idToRentalExpireTimestamp[tokenId];
     }
 
-    function checkListingStatus(uint256 tokenId) public view returns(bool) {
-        return _isListed[tokenId];
+    function checkStatus(uint256 tokenId) public view returns (uint256) {
+        return uint256(_idToStatus[tokenId]);
     }
 
     function checkOwnedIds(address owner) public view returns (uint256[] memory) {
         return _ownedIds[owner];
     }
 
-    function checkTokenBoundAccount(uint256 tokenId) public view returns(address) {
+    function checkTokenBoundAccount(uint256 tokenId) public view returns (address) {
         return _idToTokenBoundAccount[tokenId];
     }
 
-    function checkRentalPackOwner(uint256 tokenId) public view returns(address) {
+    function checkRentalPackOwner(uint256 tokenId) public view returns (address) {
         return _idToRentalPackOwner[tokenId];
     }
 
@@ -132,20 +151,30 @@ contract RentalPackNFT is ERC721, AccessControl {
                 Strings.toString(_idToRentalCondition[tokenId].minHour),
                 ', "max_hour": ',
                 Strings.toString(_idToRentalCondition[tokenId].maxHour),
-                ', "isListed": ',
-                _isListed[tokenId] ? "true" : "false",
-                '}'
+                ', "status": ',
+                Strings.toString(checkStatus(tokenId)),
+                "}"
             )
         );
         string memory encodedData = string(
             abi.encodePacked(
-                '{"id": ', Strings.toString((tokenId)), ', ',
-                '"name": "', rentalPackName, '", ',
+                '{"id": ',
+                Strings.toString((tokenId)),
+                ", ",
+                '"name": "',
+                rentalPackName,
+                '", ',
                 '"description": "this is a rental pack NFT powered by HyperRental protocol", ',
                 '"image": "https://bafkreifrphrgwh6tgdjjii2sjtairtbuxbiwuy544kbvyxq5yxi5cf5vuu.ipfs.nftstorage.link/", ',
-                '"token_bound_account": "', tokenBoundAccount, '", ',
-                '"rental_pack_owner": "', rentalPackOwner, '", ',
-                '"rental_info": ', rentalInfo, '}'
+                '"token_bound_account": "',
+                tokenBoundAccount,
+                '", ',
+                '"rental_pack_owner": "',
+                rentalPackOwner,
+                '", ',
+                '"rental_info": ',
+                rentalInfo,
+                "}"
             )
         );
         string memory json = Base64.encode(bytes(encodedData));
