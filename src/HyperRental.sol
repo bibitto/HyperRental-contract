@@ -125,7 +125,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         emit Rent(rentalPackAddress, rentalPackTokenId, rentalHour);
     }
 
-        function withdrawAssets(uint256 rentalPackTokenId, bytes[] calldata assetDatas) public {
+    function withdrawAssets(uint256 rentalPackTokenId, bytes[] calldata assetDatas) public {
         require(
             RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender, "invalid msg.sender"
         );
@@ -177,14 +177,16 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
     }
 
     function withdrawNativeToken(uint256 rentalPackTokenId, uint256 amount) public {
-        require(RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender, "msg.sender is not rental pack owner");
-        address tokenBoundAddress = RentalPackNFT(rentalPackAddress).checkTokenBoundAccount(rentalPackTokenId);
-        require(amount != 0 && address(tokenBoundAddress).balance >= amount, "the given amount is invalid. please check TBA's eth balance");
-        IAccount(tokenBoundAddress).executeCall(
-            msg.sender,
-            amount,
-            ""
+        require(
+            RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender,
+            "msg.sender is not rental pack owner"
         );
+        address tokenBoundAddress = RentalPackNFT(rentalPackAddress).checkTokenBoundAccount(rentalPackTokenId);
+        require(
+            amount != 0 && address(tokenBoundAddress).balance >= amount,
+            "the given amount is invalid. please check TBA's eth balance"
+        );
+        IAccount(tokenBoundAddress).executeCall(msg.sender, amount, "");
     }
 
     /* ========== CHAINLINK AUTOMATION FUNCTIONS ========== */
@@ -194,25 +196,39 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        return (_timestampToRentalPackTokenIds[block.timestamp].length > 0, abi.encodePacked(block.timestamp));
+        uint256 endTimestamp = block.timestamp;
+        uint256 startTimestamp = endTimestamp - 1 minutes;
+        uint256 count;
+        for (uint256 i = startTimestamp; i <= endTimestamp; i++) {
+            count += _timestampToRentalPackTokenIds[i].length;
+        }
+        if (count == 0) return (false, "");
+
+        uint256[] memory tokenIds = new uint256[](count);
+        uint256 index;
+        for (uint256 i = startTimestamp; i <= endTimestamp; i++) {
+            for (uint256 j = 0; j < _timestampToRentalPackTokenIds[i].length; j++) {
+                tokenIds[index] = _timestampToRentalPackTokenIds[i][j];
+                index++;
+            }
+        }
+        return (tokenIds.length > 0, abi.encodePacked(tokenIds));
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        uint256 timestamp = abi.decode(performData, (uint256));
-        uint256[] memory rentalPackIds = _timestampToRentalPackTokenIds[timestamp];
-        require(block.timestamp >= timestamp && timestamp != 0, "invalid timestamp");
-        require(rentalPackIds.length > 0, "no rental packs");
-
+        uint256[] memory rentalPackIds = abi.decode(performData, (uint256[]));
         for (uint256 i; i < rentalPackIds.length; i++) {
-            if (RentalPackNFT(rentalPackAddress).checkRentalExpireTimestamp(rentalPackIds[i]) != 0) {
-                IERC721(rentalPackAddress).safeTransferFrom(
-                    IERC721(rentalPackAddress).ownerOf(rentalPackIds[i]), address(this), rentalPackIds[i]
-                );
-                _delistRentalPack(rentalPackIds[i]);
-                _refreshRentalRecord(rentalPackIds[i]);
-                _unlockTokenBoundAccount(rentalPackIds[i]);
-                emit RentalFinished(timestamp, rentalPackAddress, rentalPackIds[i]);
+            uint256 currentTimestamp = block.timestamp;
+            uint256 id = rentalPackIds[i];
+            uint256 expireTimestamp = RentalPackNFT(rentalPackAddress).checkRentalExpireTimestamp(id);
+            if (expireTimestamp != 0 && expireTimestamp <= currentTimestamp) {
+                _refreshRentalRecord(id);
+                _delistRentalPack(id);
+                IERC721(rentalPackAddress).safeTransferFrom(IERC721(rentalPackAddress).ownerOf(id), address(this), id);
+                _unlockTokenBoundAccount(id);
+                emit RentalFinished(currentTimestamp, rentalPackAddress, id);
             }
+            _timestampToRentalPackTokenIds[expireTimestamp] = new uint256[](0);
         }
     }
 
