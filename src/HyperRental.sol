@@ -41,42 +41,6 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         return (tokenId, tokenBoundAddress);
     }
 
-    // function _batchDepositAssets(uint256 rentalPackTokenId, bytes[] memory assetDatas) private {
-    //     address tokenBoundAddress = IRegistry(tokenBoundAccountRegistry).account(rentalPackAddress, rentalPackTokenId);
-    //     for (uint256 i; i < assetDatas.length; i++) {
-    //         (address contractAddress, uint256 tokenId, uint256 amount, bytes32 dataType) =
-    //             abi.decode(assetDatas[i], (address, uint256, uint256, bytes32));
-
-    //         if (dataType == keccak256("ERC20")) {
-    //             require(
-    //                 IERC20(contractAddress).allowance(msg.sender, address(this)) >= amount,
-    //                 "ERC20: HyperRental is not approved for the given amount"
-    //             );
-    //             IERC20(contractAddress).transfer(tokenBoundAddress, amount);
-    //         } else if (dataType == keccak256("ERC721")) {
-    //             require(
-    //                 IERC721(contractAddress).getApproved(tokenId) == address(this),
-    //                 "ERC721: HyperRental is not approved"
-    //             );
-    //             IERC721(contractAddress).transferFrom(msg.sender, tokenBoundAddress, tokenId);
-    //         } else if (dataType == keccak256("ERC1155")) {
-    //             require(
-    //                 IERC1155(contractAddress).isApprovedForAll(msg.sender, address(this)),
-    //                 "ERC1155: HyperRental is not approved"
-    //             );
-    //             IERC1155(contractAddress).safeTransferFrom(msg.sender, tokenBoundAddress, tokenId, amount, "0x");
-    //         } else if (dataType == keccak256("ERC3525")) {
-    //             require(
-    //                 IERC3525(contractAddress).allowance(tokenId, address(this)) >= amount,
-    //                 "ERC3525: HyperRental is not approved for the given amount"
-    //             );
-    //             IERC3525(contractAddress).transferFrom(tokenId, tokenBoundAddress, amount);
-    //         } else {
-    //             revert NotSupportedToken(contractAddress);
-    //         }
-    //     }
-    // }
-
     function _lockTokenBoundAccount(uint256 rentalPackTokenId) private {
         address tokenBoundAccount = IRegistry(tokenBoundAccountRegistry).account(rentalPackAddress, rentalPackTokenId);
         IAccount(tokenBoundAccount).lock();
