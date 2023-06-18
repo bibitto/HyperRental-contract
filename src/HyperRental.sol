@@ -176,6 +176,17 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         }
     }
 
+    function withdrawNativeToken(uint256 rentalPackTokenId, uint256 amount) public {
+        require(RentalPackNFT(rentalPackAddress).checkRentalPackOwner(rentalPackTokenId) == msg.sender, "msg.sender is not rental pack owner");
+        address tokenBoundAddress = RentalPackNFT(rentalPackAddress).checkTokenBoundAccount(rentalPackTokenId);
+        require(amount != 0 && address(tokenBoundAddress).balance >= amount, "the given amount is invalid. please check TBA's eth balance");
+        IAccount(tokenBoundAddress).executeCall(
+            msg.sender,
+            amount,
+            ""
+        );
+    }
+
     /* ========== CHAINLINK AUTOMATION FUNCTIONS ========== */
     function checkUpkeep(bytes calldata /*checkData*/ )
         public
