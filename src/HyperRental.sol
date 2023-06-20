@@ -189,6 +189,11 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         IAccount(tokenBoundAddress).executeCall(msg.sender, amount, "");
     }
 
+    function transferRentalPack(uint256 rentalPackTokenId, address to) public {
+        require(rentalPackNFT.ownerOf(rentalPackTokenId) == msg.sender, "msg.sender is not token owner");
+        rentalPackNFT.safeTransferFrom(msg.sender, to, rentalPackTokenId);
+    }
+
     /* ========== CHAINLINK AUTOMATION FUNCTIONS ========== */
     function checkUpkeep(bytes calldata /*checkData*/ )
         public
@@ -197,7 +202,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
         returns (bool upkeepNeeded, bytes memory performData)
     {
         uint256 endTimestamp = block.timestamp;
-        uint256 startTimestamp = endTimestamp - 1 minutes;
+        uint256 startTimestamp = endTimestamp - 30 seconds;
         uint256 count;
         for (uint256 i = startTimestamp; i <= endTimestamp; i++) {
             count += _timestampToRentalPackTokenIds[i].length;
@@ -212,7 +217,7 @@ contract HyperRental is ERC721Holder, AutomationCompatibleInterface {
                 index++;
             }
         }
-        return (tokenIds.length > 0, abi.encodePacked(tokenIds));
+        return (tokenIds.length > 0, abi.encode(tokenIds));
     }
 
     function performUpkeep(bytes calldata performData) external override {
