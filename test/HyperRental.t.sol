@@ -98,4 +98,11 @@ contract HyperRentalTest is Test {
         datas[0] = abi.encode(address(demoNFT), 0, 1, keccak256("ERC721"));
         hyperRental.withdrawAssets(tokenId, datas);
     }
+
+    function testPerformUpkeep() public {
+        testRent();
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = 1;
+        hyperRental.performUpkeep(abi.encode(tokenIds));
+    }
 }
