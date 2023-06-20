@@ -33,7 +33,7 @@ contract HyperRentalTest is Test {
         demoNFT = new DemoNFT();
         demoERC20 = new DemoERC20();
         demoERC1155 = new DemoERC1155();
-        rentalPackNFT.grantMinterRole(address(hyperRental));
+        rentalPackNFT.grantOperatorRole(address(hyperRental));
         // accountImpl.setHyperRental(address(hyperRental));
     }
 
@@ -59,24 +59,24 @@ contract HyperRentalTest is Test {
     function testLend() public {
         testCreateRentalPack();
         testMintDemoTokens();
-        HyperRental.RentalCondition memory condition = HyperRental.RentalCondition(1, 1, 50);
+        RentalPackNFT.RentalCondition memory condition = RentalPackNFT.RentalCondition(1 ether, 1, 50);
         vm.prank(lender);
         demoNFT.approve(address(hyperRental), 0);
         // vm.prank(lender);
         // demoERC20.approve(address(hyperRental), 100000 * 10 ** demoERC20.decimals());
-        vm.prank(lender);
-        demoERC1155.setApprovalForAll(address(hyperRental), true);
-        assetDatas.push(abi.encode(address(demoNFT), 0, 0, keccak256("ERC721") ));
+        // vm.prank(lender);
+        // demoERC1155.setApprovalForAll(address(hyperRental), true);
+        // assetDatas.push(abi.encode(address(demoNFT), 0, 0, keccak256("ERC721")));
         // assetDatas.push(abi.encode(address(demoERC20), 0, 100, keccak256("ERC20")));
-        assetDatas.push(abi.encode(address(demoERC1155), 0, 3, keccak256("ERC1155")));
+        // assetDatas.push(abi.encode(address(demoERC1155), 0, 3, keccak256("ERC1155")));
         vm.prank(lender);
-        hyperRental.lend(mintedRentalNFTId, condition, assetDatas);
+        hyperRental.lend(1, condition);
     }
 
     function testCancelLending() public {
         testLend();
         vm.prank(lender);
-        hyperRental.cancelLending(0);
+        hyperRental.cancelLending(1);
         assertEq(demoNFT.ownerOf(0), lender);
     }
 
@@ -84,8 +84,25 @@ contract HyperRentalTest is Test {
         testLend();
         vm.prank(renter);
         vm.deal(renter, 10 ether);
-        hyperRental.rent{value: 5 ether}(0, 5, renter);
-        assertEq(rentalPackNFT.ownerOf(0), renter);
-        assertEq(lender.balance, 5 ether);
+        hyperRental.rent{value: 5 ether}(1, 5, renter);
+        assertEq(rentalPackNFT.ownerOf(1), renter);
+        assertEq(rentalPackNFT.checkTokenBoundAccount(1).balance, 5 ether);
+    }
+
+    function testWithdrawAssets() public {
+        vm.prank(lender);
+        (uint256 tokenId, address account) = hyperRental.createRentalPack();
+        demoNFT.safeMint(account, "");
+        vm.prank(lender);
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = abi.encode(address(demoNFT), 0, 1, keccak256("ERC721"));
+        hyperRental.withdrawAssets(tokenId, datas);
+    }
+
+    function testPerformUpkeep() public {
+        testRent();
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = 1;
+        hyperRental.performUpkeep(abi.encode(tokenIds));
     }
 }

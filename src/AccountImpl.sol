@@ -21,7 +21,7 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
     error AccountLocked();
 
     bool public isLocked;
-    address public hyperRental;
+    // address public hyperRental;
     address public deployer;
 
     event Locked();
@@ -40,7 +40,7 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
     }
 
     modifier onlyAdmin() {
-        if (msg.sender != hyperRental && msg.sender != deployer) revert NotAuthorized();
+        if (msg.sender != owner() && msg.sender != deployer) revert NotAuthorized();
         _;
     }
 
@@ -55,11 +55,9 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
         external
         payable
         onlyUnlocked
+        onlyAdmin
         returns (bytes memory result)
     {
-        address _owner = owner();
-        if (msg.sender != _owner) revert NotAuthorized();
-
         return _call(to, value, data);
     }
 
@@ -73,12 +71,12 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
         emit Unlocked();
     }
 
-    function setHyperRental(address _hyperRental) external onlyUnlocked {
-        address _owner = owner();
-        if (msg.sender != _owner) revert NotAuthorized();
+    // function setHyperRental(address _hyperRental) external onlyUnlocked {
+    //     address _owner = owner();
+    //     if (msg.sender != _owner) revert NotAuthorized();
 
-        hyperRental = _hyperRental;
-    }
+    //     hyperRental = _hyperRental;
+    // }
 
     /**
      * @dev Implements EIP-1271 signature validation
