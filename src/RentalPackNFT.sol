@@ -59,9 +59,6 @@ contract RentalPackNFT is ERC721, AccessControl {
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public override onlyRole(OPERATOR_ROLE) {
-        //solhint-disable-next-line max-line-length
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner or approved");
-
         _transfer(from, to, tokenId);
     }
 
@@ -74,7 +71,6 @@ contract RentalPackNFT is ERC721, AccessControl {
         override
         onlyRole(OPERATOR_ROLE)
     {
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner or approved");
         _safeTransfer(from, to, tokenId, data);
     }
 
