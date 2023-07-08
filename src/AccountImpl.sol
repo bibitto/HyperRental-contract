@@ -21,7 +21,6 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
     error AccountLocked();
 
     bool public isLocked;
-    // address public hyperRental;
     address public deployer;
 
     event Locked();
@@ -70,13 +69,6 @@ contract AccountImpl is IERC165, IERC1271, IAccount, MinimalReceiver {
         isLocked = false;
         emit Unlocked();
     }
-
-    // function setHyperRental(address _hyperRental) external onlyUnlocked {
-    //     address _owner = owner();
-    //     if (msg.sender != _owner) revert NotAuthorized();
-
-    //     hyperRental = _hyperRental;
-    // }
 
     /**
      * @dev Implements EIP-1271 signature validation
